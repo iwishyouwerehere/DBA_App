@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Database Viewer</title>
+    <style>
+        table { border-collapse: collapse; }
+        th, td { border: 1px solid black; padding: 5px; }
+    </style>
+</head>
+<body>
+    <div id="content"></div>
+
+    <script>
+        function loadTables() {
+            fetch('/api/tables')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('content').innerHTML = data.html;
+                });
+        }
+
+        function loadTable(tableName) {
+            fetch(`/api/tables/${tableName}`)
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('content').innerHTML = data.html;
+                });
+        }
+
+        function modifyEntry(tableName, id) {
+            const column = document.getElementById(`column_${id}`).value;
+            const newValue = document.getElementById(`newValue_${id}`).value;
+
+            fetch(`/api/tables/${tableName}/modify`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ table: tableName, id, column, newValue }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    loadTable(tableName);
+                } else {
+                    alert('Error modifying entry');
+                }
+            });
+        }
+
+        // Load tables when the page loads
+        loadTables();
+    </script>
+</body>
+</html>

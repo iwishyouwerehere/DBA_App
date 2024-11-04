@@ -1,0 +1,205 @@
+const htmlPdf = require('html-pdf');
+
+function generateBomPdf(data, res) {
+    // Compress duplicate elements by counting their occurrences
+    const compressedData = data.reduce((acc, item) => {
+        const existingItem = acc.find(i => 
+            i.IDN === item.IDN &&
+            i.Type === item.Type &&
+            i.Material === item.Material &&
+            i.Assembly === item.Assembly &&
+            i.Location === item.Location &&
+            i.Weight === item.Weight &&
+            i.Side === item.Side
+        );
+        if (existingItem) {
+            existingItem.QTY += 1;
+        } else {
+            acc.push({ ...item, QTY: 1 });
+        }
+        return acc;
+    }, []);
+
+    // Sort data by IDN
+    compressedData.sort((a, b) => a.IDN - b.IDN);
+
+    // Map data to table rows, excluding COGY
+    const tableRows = compressedData.map(row => {
+        const side = row.COGY > 0 ? 'SB' : 'PS';
+        return `<tr>
+                    <td>${row.IDN}</td>
+                    <td>${row.Type}</td>
+                    <td>${row.Material}</td>
+                    <td>${row.Assembly}</td>
+                    <td>${row.Location}</td>
+                    <td>${row.Weight}</td>
+                    <td>${side}</td>
+                    <td>${row.QTY}</td>
+                </tr>`;
+    }).join('');
+
+    const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    const computerName = "WORKSTATION-001"; // Replace with actual computer name if available
+    const htmlContent = `
+        <html>
+        <head>
+            <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+            <style>
+                body {
+                    font-family: 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif;
+                    background-color: #f0f0f0;
+                    color: #333333;
+                    padding: 20px;
+                    margin: 0;
+                }
+                .container {
+                    max-width: 800px;
+                    margin: 0 auto;
+                    background: #ffffff;
+                    padding: 30px;
+                    border-radius: 20px;
+                    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+                }
+                .header {
+                    text-align: center;
+                    margin-bottom: 30px;
+                    background: linear-gradient(135deg, #1e3c72, #2a5298);
+                    padding: 30px;
+                    border-radius: 15px;
+                    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+                }
+                .logo {
+                    font-size: 36px;
+                    font-weight: 700;
+                    color: white;
+                    text-transform: uppercase;
+                    letter-spacing: 2px;
+                    margin-bottom: 10px;
+                }
+                .subheader {
+                    font-size: 20px;
+                    color: rgba(255, 255, 255, 0.9);
+                    margin-bottom: 5px;
+                }
+                .document-info {
+                    font-size: 16px;
+                    color: rgba(255, 255, 255, 0.8);
+                    margin-top: 15px;
+                }
+                h1 {
+                    color: #1e3c72;
+                    margin-bottom: 30px;
+                    font-size: 26px;
+                    font-weight: 500;
+                }
+                table {
+                    width: 100%;
+                    border-collapse: separate;
+                    border-spacing: 0;
+                    margin-bottom: 30px;
+                    border-radius: 15px;
+                    overflow: hidden;
+                    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+                }
+                th, td {
+                    padding: 15px;
+                    text-align: left;
+                    font-size: 14px;
+                    border-bottom: 1px solid #e0e0e0;
+                }
+                th {
+                    background: #1e3c72;
+                    color: white;
+                    font-weight: 500;
+                    text-transform: uppercase;
+                    letter-spacing: 1px;
+                }
+                tr:last-child td {
+                    border-bottom: none;
+                }
+                tr:nth-child(even) {
+                    background-color: #f8f8f8;
+                }
+                tr:hover {
+                    background-color: #e8f4ff;
+                }
+                .footer {
+                    text-align: center;
+                    margin-top: 30px;
+                    font-size: 12px;
+                    color: #777;
+                }
+                .icon {
+                    display: inline-block;
+                    width: 20px;
+                    height: 20px;
+                    margin-right: 5px;
+                    vertical-align: middle;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <div class="logo">Ship Design Group S.R.L</div>
+                    <div class="subheader">Powered by VisualHull.eu</div>
+                    <div class="document-info">
+                        <p>Document: B4 BOM | Date: ${today}</p>
+                        <p>Generated by: ${computerName} | Software: VisualHull.eu</p>
+                    </div>
+                </div>
+                <h1>
+                    <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#1e3c72">
+                        <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2H17v2zm0-4H7V7h10v2z"/>
+                    </svg>
+                    Bill of Materials (BOM)
+                </h1>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>IDN</th>
+                            <th>Type</th>
+                            <th>Material</th>
+                            <th>Assembly</th>
+                            <th>Location</th>
+                            <th>Weight (Kg)</th>
+                            <th>Side</th>
+                            <th>QTY</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${tableRows}
+                    </tbody>
+                </table>
+                <div class="footer">
+                    &copy; ${new Date().getFullYear()} Ship Design Group S.R.L. All rights reserved.
+                </div>
+            </div>
+        </body>
+        </html>
+    `;
+    
+    const options = {
+        format: 'A4',
+        orientation: 'landscape',
+        border: {
+            top: '20mm',
+            right: '20mm',
+            bottom: '20mm',
+            left: '20mm'
+        }
+    };
+    htmlPdf.create(htmlContent, options).toStream((err, stream) => {
+        if (err) {
+            console.error('Error generating PDF:', err.message);
+            return res.status(500).send('Error generating PDF');
+        }
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', 'attachment; filename=ShipDesignGroup_BOM.pdf');
+        stream.pipe(res);
+    });
+}
+
+module.exports = {
+    generateBomPdf
+};<
